@@ -1,11 +1,14 @@
 // hooks/useSyncData.ts
 import { useEffect } from 'react';
 import { useDispatch } from 'react-redux';
-import { useGetLocationsQuery } from '../src/store/api/locationApi';
-import { useGetEmployeeCardsQuery } from '../src/store/api/employeeCardApi';
-import { useGetUsersQuery } from '../src/store/api/users';
-import { setEmployeeCards, setLastSync, setLocations, setUsers, setVehicles } from '../src/store/slices/localSlice';
-import { useGetVehiclesQuery } from '../src/store/api/vehicle';
+
+
+import { useGetLocationsQuery } from '../store/api/locationApi';
+import { useGetEmployeeCardsQuery } from '../store/api/employeeCardApi';
+import { useGetUsersQuery } from '../store/api/users';
+import { useGetVehiclesQuery } from '../store/api/vehicle';
+import { setEmployeeCards, setLastSync, setLocations, setUsers, setVehicles } from '../store/slices/localSlice';
+
 
 
 export const useSyncData = () => {

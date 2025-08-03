@@ -3,7 +3,7 @@ import { CheckpointPhoto } from '../types/checkpointPhoto';
 import { baseApi } from './baseApi'
 
 
-export const userApi = baseApi.injectEndpoints({
+export const checkpointPhotoApi = baseApi.injectEndpoints({
   endpoints: (builder) => ({
     createCheckpointPhoto: builder.mutation<void, CheckpointPhoto>({
       query: (data) => ({
@@ -15,4 +15,4 @@ export const userApi = baseApi.injectEndpoints({
   })
 })
 
-export const { useCreateCheckpointPhotoMutation} = userApi;
+export const { useCreateCheckpointPhotoMutation} = checkpointPhotoApi;

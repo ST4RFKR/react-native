@@ -14,6 +14,7 @@ export const userApi = baseApi.injectEndpoints({
   endpoints: (builder) => ({
     getUsers: builder.query<User[], void>({
       query: () => '/user',
+      providesTags: ["User"],
     }),
   }),
   overrideExisting: false,

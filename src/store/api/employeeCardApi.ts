@@ -4,13 +4,14 @@ import { NFCCard } from '../types/NFCCard';
 import { baseApi } from './baseApi'
 
 
-export const userApi = baseApi.injectEndpoints({
+export const employeeCardApi = baseApi.injectEndpoints({
   endpoints: (builder) => ({
     getEmployeeCards: builder.query<NFCCard[], void>({
-      query: () => '/user',
+      query: () => '/nfc-card',
+      providesTags: ["NFCCard"],
     }),
   }),
   overrideExisting: false,
 })
 
-export const { useGetEmployeeCardsQuery} = userApi;
+export const { useGetEmployeeCardsQuery} = employeeCardApi;

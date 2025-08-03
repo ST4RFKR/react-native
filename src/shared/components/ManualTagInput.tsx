@@ -7,11 +7,13 @@ interface ManualTagInputProps {
   onSwitchToNfc?: () => void;
   initialValue?: string;
   placeholder?: string;
+  label?: string;
 }
 
 const ManualTagInput: React.FC<ManualTagInputProps> = ({
   onTagSubmit,
-  placeholder = '8323'
+  placeholder = '8323',
+  label = 'Номер авто (1234)'
 }) => {
   const [inputValue, setInputValue] = useState('');
   const [error, setError] = useState<string>('');
@@ -78,7 +80,7 @@ const ManualTagInput: React.FC<ManualTagInputProps> = ({
         <View style={styles.inputContainer}>
           <TextInput
             mode="outlined"
-            label="Номер авто (1692)"
+            label={label}
             placeholder={placeholder}
             value={inputValue}
             onChangeText={handleInputChange}

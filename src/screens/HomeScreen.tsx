@@ -1,4 +1,4 @@
-// screens/HomeScreen.tsx
+
 import React, { useEffect, useState } from 'react';
 import { View, StyleSheet } from 'react-native';
 import {
@@ -10,10 +10,10 @@ import { useAppDispatch, useAppSelector } from '../store';
 import NetInfo from '@react-native-community/netinfo';
 import { Location } from '../store/types/location';
 import MenuButtons from '../shared/components/MenuButtons';
-import { useSyncData } from '../../hooks/useSyncData';
+
 import { updateConnectionStatus, updateSelectedLocation } from '../store/slices/appSlice';
 import NetworkIndicator from '../shared/components/NetworkIndicator';
-import AsyncStorage from '@react-native-async-storage/async-storage';
+import { useSyncData } from '../hooks/useSyncData';
 
 export default function HomeScreen({ navigation }: any) {
   const [showObjectModal, setShowObjectModal] = useState(false);
@@ -55,7 +55,6 @@ export default function HomeScreen({ navigation }: any) {
       );
       setFilteredLocations(filtered);
     }
-    console.log(AsyncStorage.getItem('persist:root'));
 
   }, [locations, searchQuery]);
 

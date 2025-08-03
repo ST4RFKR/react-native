@@ -10,7 +10,7 @@ const MenuButtons = ({ navigation }: any) => {
     {
       title: "Облік робочого часу",
       icon: "timer",
-      screen: "TimeTracking",
+      screen: "WorkTimeTracking",
       color: theme.colors.primary
     },
     {

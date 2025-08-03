@@ -2,16 +2,21 @@ import { Checkpoint } from '../types/checkpoint';
 import { baseApi } from './baseApi'
 
 
-export const userApi = baseApi.injectEndpoints({
+export const checkpointApi = baseApi.injectEndpoints({
   endpoints: (builder) => ({
+    getCheckpoint: builder.query<Checkpoint[], { locationId: string, limit: number }>({
+      query: ({ locationId, limit}) => `/checkpoint?locationId=${locationId}&limit=${limit}`,
+      providesTags: ["Checkpoint"],
+    }),
     createCheckpoint: builder.mutation<void, Checkpoint>({
       query: (data) => ({
         url: '/checkpoint',
         method: 'POST',
         body: data
       }),
+      invalidatesTags: ["Checkpoint"],
     }),
   })
 })
 
-export const { useCreateCheckpointMutation} = userApi;
+export const {useGetCheckpointQuery, useCreateCheckpointMutation} = checkpointApi;

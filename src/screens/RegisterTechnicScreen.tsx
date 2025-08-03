@@ -6,10 +6,19 @@ import { Text, Button, Card } from "react-native-paper"
 import NfcScanner from "../shared/components/NfcScanner"
 import ManualTagInput from "../shared/components/ManualTagInput"
 import PhotoCapture from "../shared/components/PhotoCapture"
-import { useAppSelector } from "../store"
-import { useCreateCheckpointMutation } from "../store/api/checkpointApi"
+import { RootState, useAppDispatch, useAppSelector } from "../store"
+import { useCreateCheckpointMutation, useGetCheckpointQuery } from "../store/api/checkpointApi"
 import NetInfo from '@react-native-community/netinfo';
 import { useCreateCheckpointPhotoMutation } from "../store/api/checkpointPhotoApi"
+import { addCheckpoint, addCheckpointPhoto } from '../store/slices/localSlice';
+import { saveImageLocally } from '../lib/RNFS';
+import NetworkIndicator from '../shared/components/NetworkIndicator';
+import { generateUniqueId } from "../lib/generateUniqueId"
+import { uploadToCloudinary } from "../lib/uploadToCloudinary"
+import { determineNextCheckpointType } from "../lib/determineNextCheckpointType"
+import { useStore } from "react-redux"
+
+
 
 interface RegisterTechnicScreenProps {
   navigation: any
@@ -20,9 +29,25 @@ export default function RegisterTechnicScreen({ navigation, }: RegisterTechnicSc
   const [photos, setPhotos] = useState<string[]>([])
   const [inputMethod, setInputMethod] = useState<"nfc" | "manual">("nfc")
   const [showPhotoCapture, setShowPhotoCapture] = useState(false)
+  const store = useStore<RootState>();
+
+
+  const localCheck = useAppSelector(state => state.local.checkpoints)
+  console.log("localCheck", localCheck);
+  useEffect(() => {
+    console.log("=== ИЗМЕНЕНИЕ ЛОКАЛЬНЫХ ДАННЫХ ===");
+    console.log("Checkpoints:", localCheck);
+  }, [localCheck]);
 
   const vehicle = useAppSelector(state => state.local.vehicle)
   const currentLocation = useAppSelector(state => state.app.currentLocation)
+  const { data: checkpointsByLocation } = useGetCheckpointQuery({
+    locationId: currentLocation?.id,
+    limit: 50,
+  })
+  console.log(checkpointsByLocation);
+
+  const dispatch = useAppDispatch();
 
   const onlyDigits = (str: string) => str.replace(/[^0-9]/g, '');
 
@@ -53,17 +78,26 @@ export default function RegisterTechnicScreen({ navigation, }: RegisterTechnicSc
   }
 
   const handleSubmit = async () => {
+    const localCheckpointId = generateUniqueId();
     if (!tagId.trim()) {
       Alert.alert("Ошибка", "Необходимо указать ID метки")
       return
     }
+
+    const getState = store.getState;
+    const checkpointType = await determineNextCheckpointType(
+      currentLocation.id,
+      currentVehicle?.id,
+      getState,
+      checkpointsByLocation
+    )
 
     // Проверяем наличие интернета
     const netInfo = await NetInfo.fetch();
     const isOnline = netInfo.isConnected && netInfo.isInternetReachable;
     let uploadedPhotoUrls: string[] = [];
 
-    if (isOnline) {
+    if (!isOnline) {
       // Загружаем фото в Cloudinary
       for (const uri of photos) {
         const uploadedUrl = await uploadToCloudinary(uri);
@@ -71,67 +105,89 @@ export default function RegisterTechnicScreen({ navigation, }: RegisterTechnicSc
           uploadedPhotoUrls.push(uploadedUrl);
         }
       }
+      // Создаем чекпоинт
+      const checkpointResponse = await createCheckpoint({
+        type: checkpointType,
+        timestamp: new Date().toISOString(),
+        vehicleId: currentVehicle?.id,
+        locationId: currentLocation.id,
+      })
+      if (checkpointResponse.error) {
+        console.error('Checkpoint creation failed', checkpointResponse.error);
+        return;
+      }
+
+      // Создаем фото чекпоинта
+      for (const photoUrl of uploadedPhotoUrls) {
+        await createCheckpointPhoto({
+          checkpointId: checkpointResponse.data.id,
+          url: photoUrl,
+        });
+        Alert.alert("Успех", "Чекпоинт успешно создан.");
+      }
     } else {
-      Alert.alert("Без интернета", "Фото не были загружены, так как вы офлайн.");
-      uploadedPhotoUrls = [...photos]; // Сохраняем локальные URI на случай оффлайна
+
+      console.log("=== ТЕСТОВЫЙ ОНЛАЙН РЕЖИМ (реально офлайн сохранение) ===");
+
+      try {
+
+        // Проверяем Redux состояние до сохранения
+        console.log("Текущее состояние checkpoints в Redux:", localCheck);
+
+        // Сохраняем чекпоинт в локальном хранилище
+        const checkpointToSave = {
+          id: localCheckpointId,
+          type: checkpointType,
+          timestamp: new Date().toISOString(),
+          vehicleId: currentVehicle?.id,
+          locationId: currentLocation.id,
+        };
+        console.log("Сохраняем чекпоинт локально:", checkpointToSave);
+
+        dispatch(addCheckpoint(checkpointToSave));
+        console.log("Чекпоинт отправлен в Redux");
+
+        // Сохраняем фото чекпоинта локально
+        console.log("Начинаем сохранение фото локально...");
+        for (let i = 0; i < photos.length; i++) {
+          const photoUri = photos[i];
+          console.log(`Сохраняем фото ${i + 1}/${photos.length}:`, photoUri);
+
+          try {
+            const localPath = await saveImageLocally(photoUri);
+            console.log("Фото сохранено по пути:", localPath);
+
+            const photoToSave = {
+              checkpointId: localCheckpointId,
+              url: localPath
+            };
+            console.log("Сохраняем запись фото в Redux:", photoToSave);
+
+            dispatch(addCheckpointPhoto(photoToSave));
+            console.log("Запись фото отправлена в Redux");
+
+          } catch (photoError) {
+            console.error(`Ошибка сохранения фото ${i + 1}:`, photoError);
+          }
+        }
+
+        console.log("Все фото обработаны");
+        Alert.alert("Успех", "Чекпоинт сохранен локально (тестовый онлайн режим)");
+
+      } catch (error) {
+        console.error("Ошибка в тестовом онлайн режиме:", error);
+        Alert.alert("Ошибка", "Произошла ошибка при локальном сохранении: " + error.message);
+      }
     }
-
-
-
-    const checkpointResponse = await createCheckpoint({
-      type: "ENTER",
-      timestamp: new Date().toISOString(),
-      vehicleId: currentVehicle?.id,
-      locationId: currentLocation.id,
-    })
-    if (checkpointResponse.error) {
-      console.error('Checkpoint creation failed', checkpointResponse.error);
-      return;
-    }
-    console.log(checkpointResponse.data.id);
-
-    for (const photoUrl of uploadedPhotoUrls) {
-      await createCheckpointPhoto({
-        checkpointId: checkpointResponse.data.id,
-        url: photoUrl,
-      });
-    }
-
-
 
     // Переходим на следующий экран с данными
-    navigation.navigate("RegisterTechnic", {
+    navigation.navigate("HomeScreen", {
       tagId: tagId.trim(),
       photos,
       inputMethod,
     })
   }
-  const uploadToCloudinary = async (uri: string) => {
-    const data = new FormData();
 
-    data.append('file', {
-      uri,
-      name: 'photo.jpg',
-      type: 'image/jpeg',
-    } as any);
-
-    data.append('upload_preset', 'reactnative_unsigned');
-    data.append('cloud_name', 'dsxw2jobt');
-
-    try {
-      const res = await fetch('https://api.cloudinary.com/v1_1/dsxw2jobt/image/upload', {
-        method: 'POST',
-        body: data,
-      });
-
-      const result = await res.json();
-      return result.secure_url;
-    } catch (err) {
-      console.error('Cloudinary upload failed', err);
-      Alert.alert('Помилка', 'Не вдалося завантажити фото');
-      return null;
-    }
-  };
 
 
 
@@ -143,10 +199,14 @@ export default function RegisterTechnicScreen({ navigation, }: RegisterTechnicSc
 
   return (
     <ScrollView style={styles.container} showsVerticalScrollIndicator={false}>
+      <NetworkIndicator />
       <Card style={styles.headerCard}>
         <Card.Content>
           <Text variant="headlineSmall" style={styles.title}>
-            Регистрация техники
+            Реєстрація техніки
+          </Text>
+          <Text variant="bodyMedium" style={styles.subtitle}>
+            Відмітьте тег і вкажіть фотографії
           </Text>
         </Card.Content>
       </Card>

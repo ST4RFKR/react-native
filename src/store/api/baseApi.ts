@@ -8,5 +8,6 @@ export const baseApi = createApi({
       return headers;
     },
   }),
+  tagTypes: ["Location", "User", "Checkpoint", "CheckpointPhoto",  "Vehicle", "NFCCard"],
   endpoints: () => ({}),
 });

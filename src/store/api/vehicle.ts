@@ -11,13 +11,14 @@ export interface Location {
   checkpoints: any[]
 }
 
-export const userApi = baseApi.injectEndpoints({
+export const vehicleApi = baseApi.injectEndpoints({
   endpoints: (builder) => ({
     getVehicles: builder.query<Vehicle[], void>({
       query: () => '/vehicle',
+      providesTags: ["Vehicle"],
     }),
   }),
   overrideExisting: false,
 })
 
-export const { useGetVehiclesQuery} = userApi;
+export const { useGetVehiclesQuery} = vehicleApi;
